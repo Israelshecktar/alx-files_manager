@@ -1,3 +1,4 @@
+// Redis server
 const redis = require('redis');
 const { promisify } = require('util');
 
@@ -7,6 +8,8 @@ class RedisClient {
 
     // Handle connection errors
     this.client.on('error', (err) => console.error(`Redis client error: ${err}`));
+    this.client.on('connect', () => console.log('Redis client connected'));
+    this.client.on('ready', () => console.log('Redis client ready'));
 
     // Promisify the redis methods
     this.getAsync = promisify(this.client.get).bind(this.client);
