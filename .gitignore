@@ -3,4 +3,3 @@ package.json
 .eslintrc.js
 node_modules
 redis-6.0.10
-main.js
