@@ -1,45 +1,93 @@
-// utils/db.js
 const { MongoClient } = require('mongodb');
+const mongo = require('mongodb');
+const { pwdHashed } = require('./utils');
 
 class DBClient {
-  constructor() {
-    const host = process.env.DB_HOST || 'localhost';
-    const port = process.env.DB_PORT || 27017;
-    const database = process.env.DB_DATABASE || 'files_manager';
-    const url = `mongodb://${host}:${port}`;
-
-    this.client = new MongoClient(url, { useUnifiedTopology: true });
-    this.client.connect()
+  constructor () {
+    const host = process.env.DB_HOST ? process.env.DB_HOST : 'localhost';
+    const port = process.env.DB_PORT ? process.env.DB_PORT : 27017;
+    this.database = process.env.DB_DATABASE
+      ? process.env.DB_DATABASE
+      : 'files_manager';
+    const dbUrl = `mongodb://${host}:${port}`;
+    this.connected = false;
+    this.client = new MongoClient(dbUrl, { useUnifiedTopology: true });
+    this.client
+      .connect()
       .then(() => {
-        this.db = this.client.db(database);
-        console.log('MongoDB client connected');
+        this.connected = true;
+        this.db = this.client.db(this.database);
       })
-      .catch((err) => console.error(`MongoDB client error: ${err}`));
+      .catch((err) => console.log(err.message));
   }
 
-  isAlive() {
-    return this.client && this.client.topology && this.client.topology.isConnected();
+  isAlive () {
+    return this.connected;
   }
 
-  async nbUsers() {
-    try {
-      return await this.db.collection('users').countDocuments();
-    } catch (err) {
-      console.error(`Error counting users: ${err}`);
-      return 0;
+  async nbUsers () {
+    await this.client.connect();
+    const users = await this.client
+      .db(this.database)
+      .collection('users')
+      .countDocuments();
+    return users;
+  }
+
+  async nbFiles () {
+    await this.client.connect();
+    const users = await this.client
+      .db(this.database)
+      .collection('files')
+      .countDocuments();
+    return users;
+  }
+
+  async createUser (email, password) {
+    const hashedPwd = pwdHashed(password);
+    await this.client.connect();
+    const user = await this.client
+      .db(this.database)
+      .collection('users')
+      .insertOne({ email, password: hashedPwd });
+    return user;
+  }
+
+  async getUser (email) {
+    await this.client.connect();
+    const user = await this.client
+      .db(this.database)
+      .collection('users')
+      .find({ email })
+      .toArray();
+    if (!user.length) {
+      return null;
     }
+    return user[0];
   }
 
-  async nbFiles() {
-    try {
-      return await this.db.collection('files').countDocuments();
-    } catch (err) {
-      console.error(`Error counting files: ${err}`);
-      return 0;
+  async getUserById (id) {
+    const _id = new mongo.ObjectID(id);
+    await this.client.connect();
+    const user = await this.client
+      .db(this.database)
+      .collection('users')
+      .find({ _id })
+      .toArray();
+    if (!user.length) {
+      return null;
     }
+    return user[0];
+  }
+
+  async userExist (email) {
+    const user = await this.getUser(email);
+    if (user) {
+      return true;
+    }
+    return false;
   }
 }
 
-// Export an instance of DBClient
 const dbClient = new DBClient();
 module.exports = dbClient;
