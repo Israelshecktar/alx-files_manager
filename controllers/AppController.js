@@ -1,28 +1,16 @@
-import sha1 from 'sha1';
-import dbClient from '../utils/db';
+const redisClient = require('../utils/redis');
+const dbClient = require('../utils/db');
 
-class UsersController {
-    static async postNew(req, res) {
-        const { email, password } = req.body;
+class AppController {
+  static getStatus(req, res) {
+    res.status(200).json({ redis: redisClient.isAlive(), db: dbClient.isAlive() });
+  }
 
-        if (!email) {
-            return res.status(400).json({ error: 'Missing email' });
-        }
-
-        if (!password) {
-            return res.status(400).json({ error: 'Missing password' });
-        }
-
-        const userExists = await dbClient.db.collection('users').findOne({ email });
-        if (userExists) {
-            return res.status(400).json({ error: 'Already exist' });
-        }
-
-        const hashedPassword = sha1(password);
-        const result = await dbClient.db.collection('users').insertOne({ email, password: hashedPassword });
-
-        return res.status(201).json({ id: result.insertedId, email });
-    }
+  static async getStats(req, res) {
+    const users = await dbClient.nbUsers();
+    const files = await dbClient.nbFiles();
+    res.status(200).json({ users, files });
+  }
 }
 
-export default UsersController;
+module.exports = AppController;
