@@ -31,6 +31,5 @@ class DBClient {
   }
 }
 
-// Export an instance of DBClient
 const dbClient = new DBClient();
 module.exports = dbClient;
